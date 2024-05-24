@@ -1,5 +1,6 @@
 import numpy as np # linear algebra
-import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+import pandas as pd
+from model import BertLstmModel
 
 
 df = pd.read_csv('/kaggle/input/weibo-hot-searchlabeled/weibo-hot-search-labeled.csv')
