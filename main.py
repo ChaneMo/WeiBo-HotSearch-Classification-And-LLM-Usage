@@ -1,18 +1,25 @@
 import numpy as np # linear algebra
 import pandas as pd
 from model import BertLstmModel
-
-
-df = pd.read_csv('/kaggle/input/weibo-hot-searchlabeled/weibo-hot-search-labeled.csv')
-df['标签（时政、科技、科普、娱乐、体育、社会讨论/话题、时事、经济）'] = df['标签（时政、科技、科普、娱乐、体育、社会讨论/话题、时事、经济）'].apply(lambda x: x.strip())
-df.head()
-
-import collections
-cnt = collections.Counter(df['标签（时政、科技、科普、娱乐、体育、社会讨论/话题、时事、经济）'])
-cnt
-
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
+from imblearn.under_sampling import RandomUnderSampler
+from imblearn.over_sampling import RandomOverSampler
+from transformers import BertTokenizer, AutoModel, AutoTokenizer
+from torch.utils.data import DataLoader
+import torchmetrics
+from sklearn.metrics import precision_score, recall_score, f1_score
+from torch.optim import AdamW
+import collections
+
+
+df = pd.read_csv('data/weibo-hot-search-labeled.csv')
+df['标签（时政、科技、科普、娱乐、体育、社会讨论/话题、时事、经济）'] = df['标签（时政、科技、科普、娱乐、体育、社会讨论/话题、时事、经济）'].apply(lambda x: x.strip())
+print(df.head())
+
+cnt = collections.Counter(df['标签（时政、科技、科普、娱乐、体育、社会讨论/话题、时事、经济）'])
+print('标签分布：', cnt)
+
 texts = df['热搜词条'].tolist()
 labels = [li.strip() for li in df['标签（时政、科技、科普、娱乐、体育、社会讨论/话题、时事、经济）'].tolist()]
 # 将标签转换为数值类型
@@ -23,10 +30,6 @@ X_train, X_test, y_train, y_test = train_test_split(texts, labels, test_size=0.2
 
 train_df = pd.DataFrame(X_train, columns=['热搜词条'])
 train_df['标签'] = y_train
-print(train_df.head())
-
-from imblearn.under_sampling import RandomUnderSampler
-from imblearn.over_sampling import RandomOverSampler
 
 # 定义随机过采样对象
 ros = RandomOverSampler()
@@ -44,7 +47,7 @@ print('Resampled dataset shape:', resampled_df.shape)
 
 X_train, y_train = resampled_df['热搜词条'].tolist(), resampled_df['标签（时政、科技、科普、娱乐、体育、社会讨论/话题、时事、经济）'].tolist()
 
-from transformers import BertTokenizer, AutoModel, AutoTokenizer
+
 # 加载预训练的 BERT 模型和配置文件
 bert_config = 'bert-base-chinese'
 # bert_config = 'hfl/chinese-roberta-wwm-ext-large'
@@ -74,12 +77,10 @@ valid_dataset = torch.utils.data.TensorDataset(torch.tensor(valid_encodings['inp
                                                torch.tensor(valid_encodings['attention_mask']),
                                                torch.tensor(y_test))
 
-from torch.utils.data import DataLoader
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 valid_loader = DataLoader(valid_dataset, batch_size=batch_size)
 
-import torchmetrics
-from torch.optim import AdamW
+
 learning_rate = 1e-3
 # 定义优化器和学习率调度器
 optimizer = AdamW([
@@ -182,7 +183,7 @@ with torch.no_grad():
         y_pred.extend(pred.cpu().numpy())
         y_true.extend(label.cpu().numpy())
 
-from sklearn.metrics import precision_score, recall_score, f1_score
+
 # 计算准确率和召回率
 precision = precision_score(y_true, y_pred, average='macro')
 recall = recall_score(y_true, y_pred, average='macro')
