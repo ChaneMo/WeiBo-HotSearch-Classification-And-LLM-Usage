@@ -59,6 +59,13 @@ batch_size = 32
 max_length = 15
 num_epochs = 5
 
+# 冻结 BERT 模型的前几层
+for param in model.parameters():
+    param.requires_grad = False
+# 仅运行bert最后一层参与权重更新
+for param in model.encoder.layer[-1].parameters():
+    param.requires_grad = True
+
 # 创建 BertLstmModel 模型
 device = torch.device('cuda')
 model.to(device)
