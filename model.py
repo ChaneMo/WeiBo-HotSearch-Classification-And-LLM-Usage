@@ -7,7 +7,7 @@ class BertLstmModel(nn.Module):
         super(BertLstmModel, self).__init__()
 
         # 加载预训练的 BERT 模型
-#         self.bert = BertModel.from_pretrained(bert_config)
+        # self.bert = BertModel.from_pretrained(bert_config)
         self.bert = AutoModel.from_pretrained(bert_config)
 
         # LSTM 层
@@ -19,10 +19,10 @@ class BertLstmModel(nn.Module):
         self.Dropout = nn.Dropout(p=0.3)
         
         # 冻结 BERT 模型的前几层
-        for param in self.bert.parameters():
-            param.requires_grad = False
-        for param in self.bert.encoder.layer[-1].parameters():
-            param.requires_grad = True
+        # for param in self.bert.parameters():
+        #     param.requires_grad = False
+        # for param in self.bert.encoder.layer[-1].parameters():
+        #     param.requires_grad = True
 
     def forward(self, input_ids, attention_mask):
         # BERT 输出
