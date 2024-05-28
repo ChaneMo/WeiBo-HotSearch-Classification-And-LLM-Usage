@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader
 import torchmetrics
 from sklearn.metrics import precision_score, recall_score, f1_score
 from torch.optim import AdamW
+import torch.nn.functional as F
 import collections
 
 
@@ -95,8 +96,25 @@ optimizer = AdamW([
     {'params': model.fc.parameters(), 'lr': 5e-5},
     {'params': model.bert.encoder.layer[-1].parameters(), 'lr': 5e-5}
 ], lr=learning_rate)
+
+class FocalLoss(torch.nn.Module):
+    def __init__(self, gamma=2.0, alpha=0.25):
+        super(FocalLoss, self).__init__()
+        self.gamma = gamma
+        self.alpha = alpha
+
+    def forward(self, inputs, targets):
+        eps = 1e-7
+        targets = targets.float()
+        logpt = F.log_softmax(inputs, dim=1)
+        pt = torch.exp(logpt)
+        logpt = (1 - pt) ** self.gamma * logpt
+        loss = -self.alpha * (targets * logpt).sum(dim=1)
+        return loss.mean()
+
 # 定义损失函数
-criterion = nn.CrossEntropyLoss()
+# criterion = nn.CrossEntropyLoss()
+criterion = FocalLoss()
 metric = torchmetrics.Precision(task='multiclass', num_classes=8)
 metric.to(device)
 
@@ -119,7 +137,11 @@ for epoch in range(num_epochs):
         logits = model(input_ids=input_ids, attention_mask=attention_mask)
 
         # 计算损失和评价指标
-        loss = criterion(logits, label)
+        # 交叉熵+Focal Loss
+        loss_ce = F.cross_entropy(logits, label)  # 计算交叉熵损失
+        loss_focal = criterion(logits, F.one_hot(label, 6))  # 计算Focal Loss
+        loss = loss_ce + loss_focal  # 将交叉熵损失和Focal Loss相加
+        
         metric_value = metric(torch.argmax(logits, dim=1), label)
 
         # 反向传播和更新参数
